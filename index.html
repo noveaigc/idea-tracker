@@ -1,1 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IdeaFlow | 想法追踪</title>
+<style>
+:root{--primary:#6c63ff;--bg:#f7f8fc;--card:#fff;--text:#222;--sub:#888;--border:#e8eaed;--radius:12px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{background:linear-gradient(135deg,#6c63ff,#a855f7);padding:20px;color:#fff;position:sticky;top:0;z-index:10}
+header h1{font-size:1.4rem;font-weight:700}
+header p{font-size:.85rem;opacity:.85;margin-top:2px}
+.add-btn{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:1.8rem;cursor:pointer;box-shadow:0 4px 16px rgba(108,99,255,.4);z-index:20}
+.filters{display:flex;gap:8px;padding:16px;overflow-x:auto}
+.filter-btn{border:1px solid var(--border);background:#fff;padding:6px 14px;border-radius:20px;font-size:.8rem;cursor:pointer;white-space:nowrap;color:var(--sub)}
+.filter-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;padding:0 16px 100px}
+.card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.06);cursor:pointer;transition:.2s}
+.card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.1)}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;margin-bottom:10px}
+.badge.pending{background:#f1f3f4;color:#666}
+.badge.ongoing{background:#e8f0fe;color:#1a73e8}
+.badge.completed{background:#e6f4ea;color:#1e8e3e}
+.badge.shelved{background:#fef7e0;color:#f29900}
+.card h3{font-size:1rem;margin-bottom:6px;line-height:1.4}
+.card p{font-size:.85rem;color:var(--sub);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:12px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag{background:#f0efff;color:#6c63ff;padding:3px 8px;border-radius:6px;font-size:.72rem}
+.card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:.78rem;color:var(--sub)}
+.empty{text-align:center;padding:60px 20px;color:var(--sub)}
+.empty div{font-size:2.5rem;margin-bottom:12px}
+/ Modal /
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:30;display:none;align-items:flex-end;justify-content:center}
+.overlay.show{display:flex}
+.sheet{background:#fff;width:100%;max-width:600px;border-radius:20px 20px 0 0;padding:24px;max-height:90vh;overflow-y:auto;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet h2{font-size:1.2rem;margin-bottom:20px}
+.form-group{margin-bottom:16px}
+label{display:block;font-size:.85rem;font-weight:500;margin-bottom:6px;color:#444}
+input,textarea,select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.95rem;outline:none;font-family:inherit}
+input:focus,textarea:focus{border-color:var(--primary)}
+.btn-row{display:flex;gap:10px;margin-top:20px}
+.btn{flex:1;padding:12px;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-cancel{background:#f1f3f4;color:#666}
+.ai-box{background:#f0efff;border-radius:8px;padding:12px;margin-top:12px}
+.ai-box .ai-title{font-size:.8rem;color:#6c63ff;font-weight:600;margin-bottom:8px}
+.ai-tag{display:inline-block;background:#fff;border:1px solid #c4b5fd;color:#6c63ff;padding:3px 8px;border-radius:6px;font-size:.75rem;margin:2px}
+/ Detail /
+.detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+.detail-header h2{font-size:1.1rem;flex:1;margin-right:12px}
+.section{margin:20px 0}
+.section-label{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);margin-bottom:10px;font-weight:600}
+.log-item{padding:10px 0 10px 16px;border-left:2px solid #e0d9ff;position:relative;margin-left:8px}
+.log-item::before{content:'';position:absolute;left:-7px;top:14px;width:12px;height:12px;background:#fff;border:2px solid var(--primary);border-radius:50%}
+.log-date{font-size:.72rem;color:var(--sub);margin-bottom:3px}
+.log-text{font-size:.88rem}
+.add-log-row{display:flex;gap:8px;margin-top:12px}
+.add-log-row input{flex:1}
+.add-log-row button{padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.85rem;white-space:nowrap}
+.resource-section{display:flex;flex-direction:column;gap:8px}
+.resource-item{background:#f8f9fa;border-radius:8px;padding:10px 12px}
+.resource-item .r-type{font-size:.7rem;color:var(--sub);text-transform:uppercase;margin-bottom:3px}
+.resource-item .r-name{font-size:.88rem;font-weight:500}
+.status-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.status-opt{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);font-size:.8rem;cursor:pointer;background:#fff}
+.status-opt.active{border-color:var(--primary);background:#f0efff;color:var(--primary);font-weight:600}
+@media(min-width:600px){.sheet{border-radius:16px;margin:auto;margin-bottom:0}}
+</style>
+</head>
+<body>
 
+<header>
+  <h1>💡 IdeaFlow</h1>
+  <p>记录灵感，追踪成长</p >
+</header>
+
+<div class="filters" id="filters">
+  <button class="filter-btn active" data-f="all">全部</button>
+  <button class="filter-btn" data-f="pending">待启动</button>
+  <button class="filter-btn" data-f="ongoing">进行中</button>
+  <button class="filter-btn" data-f="completed">已完成</button>
+  <button class="filter-btn" data-f="shelved">已搁置</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<button class="add-btn" id="addBtn">+</button>
+
+<!-- 新建/编辑 -->
+<div class="overlay" id="editOverlay">
+  <div class="sheet">
+    <h2 id="editTitle">记录新想法</h2>
+    <div class="form-group">
+      <label>标题</label>
+      <input id="eTitle" placeholder="给这个想法起个名字..." />
+    </div>
+    <div class="form-group">
+      <label>描述</label>
+      <textarea id="eDesc" rows="4" placeholder="详细描述你的想法，AI 会根据内容推荐技术和资源..."></textarea>
+    </div>
+    <div id="aiBox" class="ai-box" style="display:none">
+      <div class="ai-title">🤖 AI 推荐关联资源</div>
+      <div id="aiTags"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-cancel" id="cancelEdit">取消</button>
+      <button class="btn btn-primary" id="saveEdit">保存想法</button>
+    </div>
+  </div>
+</div>
+
+<!-- 详情 -->
+<div class="overlay" id="detailOverlay">
+  <div class="sheet" id="detailSheet"></div>
+</div>
+
+<script>
+const DBKEY = 'ideaflowv2';
+const STATUSES = {pending:'待启动',ongoing:'进行中',completed:'已完成',shelved:'已搁置'};
+
+// AI 推荐规则
+const AI_RULES = [
+  {kw:['小程序','微信','wx'],res:[{t:'框架',n:'微信小程序原生'},{t:'框架',n:'uni-app'},{t:'工具',n:'微信开发者工具'},{t:'资源',n:'微信官方文档'}]},
+  {kw:['网页','前端','web','html','css','react','vue'],res:[{t:'框架',n:'React / Vue'},{t:'工具',n:'VS Code'},{t:'工具',n:'Vite'},{t:'资源',n:'MDN Web Docs'}]},
+  {kw:['ai','人工智能','模型','gpt','llm','大模型'],res:[{t:'API',n:'OpenAI API'},{t:'API',n:'DeepSeek API'},{t:'框架',n:'LangChain'},{t:'资源',n:'Hugging Face'}]},
+  {kw:['数据','分析','可视化','图表'],res:[{t:'工具',n:'Python + Pandas'},{t:'库',n:'ECharts'},{t:'工具',n:'Tableau'},{t:'资源',n:'Kaggle'}]},
+  {kw:['设计','ui','ux','界面','原型'],res:[{t:'工具',n:'Figma'},{t:'工具',n:'Sketch'},{t:'资源',n:'Dribbble'},{t:'库',n:'Tailwind CSS'}]},
+  {kw:['后端','服务器','api','数据库','node','python'],res:[{t:'框架',n:'Node.js / FastAPI'},{t:'数据库',n:'Supabase'},{t:'工具',n:'Postman'},{t:'资源',n:'Railway 部署'}]},
+  {kw:['app','应用','ios','android','移动'],res:[{t:'框架',n:'React Native'},{t:'框架',n:'Flutter'},{t:'工具',n:'Expo'},{t:'资源',n:'App Store Connect'}]},
+  {kw:['自动化','爬虫','脚本','机器人'],res:[{t:'语言',n:'Python'},{t:'库',n:'Playwright'},{t:'库',n:'BeautifulSoup'},{t:'工具',n:'GitHub Actions'}]},
+];
+
+function getAI(text){
+  const t = text.toLowerCase();
+  let res = [];
+  for(const rule of AI_RULES){
+    if(rule.kw.some(k=>t.includes(k))) res.push(...rule.res);
+  }
+  if(!res.length) res = [{t:'工具',n:'Notion'},{t:'工具',n:'GitHub'},{t:'资源',n:'Product Hunt'}];
+  return res.slice(0,6);
+}
+
+function load(){return JSON.parse(localStorage.getItem(DB_KEY)||'[]')}
+function save(data){localStorage.setItem(DB_KEY,JSON.stringify(data))}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+function fmt(ts){return new Date(ts).toLocaleDateString('zh-CN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+
+let currentFilter = 'all';
+let editId = null;
+
+function render(){
+  const data = load();
+  const grid = document.getElementById('grid');
+  const filtered = currentFilter==='all' ? data : data.filter(d=>d.status===currentFilter);
+  if(!filtered.length){
+    grid.innerHTML=<div class="empty"><div>💭</div><p>${data.length?'这个分类还没有想法':'还没有想法，点击 + 开始记录'}</p ></div>;
+    return;
+  }
+  grid.innerHTML = filtered.map(idea=>
+    <div class="card" onclick="openDetail('${idea.id}')">
+      <span class="badge ${idea.status}">${STATUSES[idea.status]}</span>
+      <h3>${idea.title}</h3>
+      <p>${idea.desc}</p >
+      <div class="tags">${(idea.resources||[]).slice(0,3).map(r=><span class="tag">${r.n}</span>).join('')}</div>
+      <div class="card-footer">
+        <span>${fmt(idea.createdAt)}</span>
+        <span>${(idea.logs||[]).length} 条进展</span>
+      </div>
+    </div>
+  ).join('');
+}
+
+// 筛选
+document.getElementById('filters').onclick = e=>{
+  const btn = e.target.closest('[data-f]');
+  if(!btn) return;
+  currentFilter = btn.dataset.f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.toggle('active',b===btn));
+  render();
+};
+
+// 新建
+document.getElementById('addBtn').onclick = ()=>{
+  editId = null;
+  document.getElementById('editTitle').textContent = '记录新想法';
+  document.getElementById('eTitle').value = '';
+  document.getElementById('eDesc').value = '';
+  document.getElementById('aiBox').style.display = 'none';
+  document.getElementById('editOverlay').classList.add('show');
+};
+document.getElementById('cancelEdit').onclick = ()=>document.getElementById('editOverlay').classList.remove('show');
+
+// AI 实时推荐
+let aiTimer;
+document.getElementById('eDesc').oninput = function(){
+  clearTimeout(aiTimer);
+  aiTimer = setTimeout(()=>{
+    const v = this.value.trim();
+    if(v.length<5){document.getElementById('aiBox').style.display='none';return;}
+    const res = getAI(v+' '+document.getElementById('eTitle').value);
+    document.getElementById('aiTags').innerHTML = res.map(r=><span class="ai-tag">${r.t}: ${r.n}</span>).join('');
+    document.getElementById('aiBox').style.display = 'block';
+  },400);
+};
+
+// 保存
+document.getElementById('saveEdit').onclick = ()=>{
+  const title = document.getElementById('eTitle').value.trim();
+  const desc = document.getElementById('eDesc').value.trim();
+  if(!title||!desc) return alert('请填写标题和描述');
+  const data = load();
+  const resources = getAI(desc+' '+title);
+  if(editId){
+    const idx = data.findIndex(d=>d.id===editId);
+    if(idx>-1){data[idx].title=title;data[idx].desc=desc;data[idx].resources=resources;}
+  } else {
+    data.unshift({id:uid(),title,desc,status:'pending',resources,logs:[],createdAt:Date.now()});
+  }
+  save(data);
+  document.getElementById('editOverlay').classList.remove('show');
+  render();
+};
+
+// 详情
+function openDetail(id){
+  const data = load();
+  const idea = data.find(d=>d.id===id);
+  if(!idea) return;
+  const sheet = document.getElementById('detailSheet');
+  sheet.innerHTML = 
+    <div class="detail-header">
+      <h2>${idea.title}</h2>
+      <span class="badge ${idea.status}">${STATUSES[idea.status]}</span>
+    </div>
+    <p style="font-size:.9rem;color:#555;line-height:1.6">${idea.desc}</p >
+
+    <div class="section">
+      <div class="section-label">修改状态</div>
+      <div class="status-row">
+        ${Object.entries(STATUSES).map(([k,v])=><span class="status-opt${idea.status===k?' active':''}" onclick="changeStatus('${id}','${k}')">${v}</span>).join('')}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">🤖 AI 推荐资源</div>
+      <div class="resource-section">
+        ${(idea.resources||[]).map(r=><div class="resource-item"><div class="r-type">${r.t}</div><div class="r-name">${r.n}</div></div>).join('')}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">📝 进展日志</div>
+      <div id="logs_${id}">
+        ${(idea.logs||[]).length ? idea.logs.map(l=>
+          <div class="log-item">
+            <div class="log-date">${fmt(l.ts)}</div>
+            <div class="log-text">${l.text}</div>
+          </div>
+        ).join('') : '<p style="color:#aaa;font-size:.85rem">还没有进展记录</p >'}
+      </div>
+      <div class="add-log-row">
+        <input id="logInput_${id}" placeholder="记录今天的进展..." />
+        <button onclick="addLog('${id}')">记录</button>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-cancel" onclick="document.getElementById('detailOverlay').classList.remove('show')">关闭</button>
+      <button class="btn btn-primary" onclick="editIdea('${id}')">编辑</button>
+    </div>
+  ;
+  document.getElementById('detailOverlay').classList.add('show');
+}
+
+function changeStatus(id,status){
+  const data = load();
+  const idx = data.findIndex(d=>d.id===id);
+  if(idx>-1){data[idx].status=status;save(data);}
+  openDetail(id);
+  render();
+}
+
+function addLog(id){
+  const input = document.getElementById('logInput_'+id);
+  const text = input.value.trim();
+  if(!text) return;
+  const data = load();
+  const idx = data.findIndex(d=>d.id===id);
+  if(idx>-1){
+    data[idx].logs = data[idx].logs||[];
+    data[idx].logs.push({ts:Date.now(),text});
+    save(data);
+  }
+  input.value='';
+  openDetail(id);
+  render();
+}
+
+function editIdea(id){
+  const data = load();
+  const idea = data.find(d=>d.id===id);
+  if(!idea) return;
+  editId = id;
+  document.getElementById('editTitle').textContent = '编辑想法';
+  document.getElementById('eTitle').value = idea.title;
+  document.getElementById('eDesc').value = idea.desc;
+  document.getElementById('detailOverlay').classList.remove('show');
+  document.getElementById('editOverlay').classList.add('show');
+}
+
+// 点击遮罩关闭
+['editOverlay','detailOverlay'].forEach(id=>{
+  document.getElementById(id).onclick = e=>{
+    if(e.target.id===id) document.getElementById(id).classList.remove('show');
+  };
+});
+
+render();
+</script>
+</body>
+</html>
